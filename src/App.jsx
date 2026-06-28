@@ -1886,6 +1886,16 @@ function fmtDate(v) {
   return isNaN(d) ? String(v) : d.toLocaleString('en-AU')
 }
 
+function fmtMoney(v) {
+  if (v == null || v === '') return ''
+  const n = Number(v)
+  return isNaN(n) ? String(v) : `$${n.toFixed(2)}`
+}
+
+function sumField(rows, key) {
+  return rows.reduce((acc, r) => acc + (Number(r[key]) || 0), 0)
+}
+
 function downloadCsv(filename, columns, rows) {
   const escape = (val) => {
     const s = val == null ? '' : String(val)
@@ -1915,8 +1925,10 @@ const ADMIN_TABS = {
       { key: 'created_at', label: 'Date', date: true },
       { key: 'customer_name', label: 'Customer' },
       { key: 'customer_email', label: 'Email' },
-      { key: 'amount', label: 'Amount' },
-      { key: 'currency', label: 'Currency' },
+      { key: 'items', label: 'Products' },
+      { key: 'item_total', label: 'Revenue', money: true },
+      { key: 'shipping', label: 'Shipping', money: true },
+      { key: 'amount', label: 'Total', money: true },
       { key: 'status', label: 'Status' },
       { key: 'shipping_address', label: 'Ship to' },
       { key: 'paypal_order_id', label: 'PayPal Order' },
@@ -2104,6 +2116,30 @@ function AdminView() {
           ))}
         </div>
 
+        {/* Orders summary */}
+        {tab === 'orders' && rows.length > 0 && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            {[
+              ['Orders', String(rows.length)],
+              [
+                'Revenue (products)',
+                fmtMoney(sumField(rows, 'item_total')),
+              ],
+              ['Shipping', fmtMoney(sumField(rows, 'shipping'))],
+              ['Total takings', fmtMoney(sumField(rows, 'amount'))],
+            ].map(([label, value]) => (
+              <div key={label} className="bg-white border border-sand p-5">
+                <div className="font-sans text-[10px] tracking-widest uppercase text-gold mb-2">
+                  {label}
+                </div>
+                <div className="font-serif text-2xl text-ocean tabular-nums">
+                  {value}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Toolbar */}
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-serif text-2xl text-ocean uppercase tracking-wide">
@@ -2153,9 +2189,15 @@ function AdminView() {
                     {active.columns.map((c) => (
                       <td
                         key={c.key}
-                        className="px-4 py-3 max-w-[280px] whitespace-pre-wrap break-words"
+                        className={`px-4 py-3 max-w-[280px] whitespace-pre-wrap break-words ${
+                          c.money ? 'whitespace-nowrap tabular-nums' : ''
+                        }`}
                       >
-                        {c.date ? fmtDate(r[c.key]) : r[c.key]}
+                        {c.date
+                          ? fmtDate(r[c.key])
+                          : c.money
+                          ? fmtMoney(r[c.key])
+                          : r[c.key]}
                       </td>
                     ))}
                   </tr>
