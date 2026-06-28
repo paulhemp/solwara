@@ -1386,7 +1386,7 @@ function FooterColumn({ title, links }) {
 }
 
 function Footer() {
-  const { showToast } = useStore()
+  const { showToast, navigate } = useStore()
   return (
     <footer className="bg-ocean text-sand">
       <div className="max-w-8xl mx-auto px-6 lg:px-10 py-20 grid grid-cols-1 md:grid-cols-4 gap-12">
@@ -1419,17 +1419,26 @@ function Footer() {
           </h4>
           <ul className="space-y-3 font-sans text-xs font-light text-sand/70">
             <li>
-              <button className="hover:text-ivory transition-colors">
+              <button
+                onClick={() => navigate('privacy')}
+                className="hover:text-ivory transition-colors"
+              >
                 Privacy Policy
               </button>
             </li>
             <li>
-              <button className="hover:text-ivory transition-colors">
+              <button
+                onClick={() => navigate('shipping')}
+                className="hover:text-ivory transition-colors"
+              >
                 Shipping &amp; Returns
               </button>
             </li>
             <li>
-              <button className="hover:text-ivory transition-colors">
+              <button
+                onClick={() => navigate('terms')}
+                className="hover:text-ivory transition-colors"
+              >
                 Terms of Service
               </button>
             </li>
@@ -1513,6 +1522,228 @@ function Footer() {
 }
 
 /* =================================================================== */
+/*  LEGAL PAGES (Privacy · Shipping & Returns · Terms)                */
+/*  Edit copy in the LEGAL_PAGES data below.                          */
+/* =================================================================== */
+const LEGAL_UPDATED = '28 June 2026'
+
+const LEGAL_PAGES = {
+  privacy: {
+    eyebrow: 'Legal',
+    title: 'Privacy Policy',
+    intro:
+      'Solwara Cacao ("Solwara", "we", "us") respects your privacy. This policy explains what personal information we collect when you visit solwara.com.au or place an order, how we use it, and the choices you have.',
+    sections: [
+      {
+        h: 'Information we collect',
+        p: [
+          'When you place an order, subscribe, or contact us, we collect the details you provide — such as your name, email address, phone number, shipping address, and any message content. Payment card details are entered directly with our payment provider and are never stored on our servers.',
+          'We also collect limited technical information automatically, such as your browser type, device, and pages visited, to keep the site secure and improve it.',
+        ],
+      },
+      {
+        h: 'How we use your information',
+        p: [
+          'We use your information to process and ship your orders, send order confirmations and receipts, respond to enquiries, manage wholesale relationships, and — only if you opt in — send you occasional newsletters. We do not sell your personal information.',
+        ],
+      },
+      {
+        h: 'Sharing with service providers',
+        p: [
+          'We share information only with trusted providers who help us operate, including our payment processor (for example Stripe), our email delivery provider (Resend), and our hosting platform (Vercel). These providers process data on our behalf under their own privacy and security commitments.',
+        ],
+      },
+      {
+        h: 'Email & marketing',
+        p: [
+          'You can unsubscribe from our newsletter at any time using the link in any email, or by contacting us. We will still send you transactional emails relating to your orders.',
+        ],
+      },
+      {
+        h: 'Data retention & security',
+        p: [
+          'We keep order records for as long as needed to meet our legal, tax, and accounting obligations, and we take reasonable steps to protect your information from loss, misuse, or unauthorised access.',
+        ],
+      },
+      {
+        h: 'Your rights',
+        p: [
+          'You may request access to, correction of, or deletion of the personal information we hold about you. To make a request, email us at hello@solwara.com.au and we will respond within a reasonable time.',
+        ],
+      },
+      {
+        h: 'Contact',
+        p: [
+          'Questions about this policy? Email hello@solwara.com.au.',
+        ],
+      },
+    ],
+  },
+
+  shipping: {
+    eyebrow: 'Legal',
+    title: 'Shipping & Returns',
+    intro:
+      'We pack every order with care and want your Solwara cacao to reach you in perfect condition. Here is what to expect.',
+    sections: [
+      {
+        h: 'Shipping rates',
+        p: [
+          'We offer a flat $20 AUD shipping rate, anywhere in Australia, on every order. Shipping is added as a single line at checkout.',
+        ],
+      },
+      {
+        h: 'Processing & delivery times',
+        p: [
+          'Orders are usually packed and dispatched within 1–3 business days. Once shipped, delivery typically takes 2–7 business days depending on your location within Australia. You will receive tracking details by email where available.',
+        ],
+      },
+      {
+        h: 'International orders',
+        p: [
+          'At this time we ship within Australia only. If you are outside Australia or are enquiring on behalf of a stockist, please reach out via our Wholesale page or email hello@solwara.com.au.',
+        ],
+      },
+      {
+        h: 'Returns & exchanges',
+        p: [
+          'Because our cacao is a consumable food product, we are unable to accept returns or exchanges for change of mind once an order has been dispatched. This does not affect your rights under the Australian Consumer Law.',
+        ],
+      },
+      {
+        h: 'Damaged or incorrect orders',
+        p: [
+          'If your order arrives damaged, faulty, or incorrect, please email hello@solwara.com.au within 7 days of delivery with your order number and a photo. We will gladly arrange a replacement or refund.',
+        ],
+      },
+      {
+        h: 'Lost parcels',
+        p: [
+          'If your tracking has not updated or your parcel has not arrived within the expected window, contact us and we will work with the carrier to resolve it.',
+        ],
+      },
+    ],
+  },
+
+  terms: {
+    eyebrow: 'Legal',
+    title: 'Terms of Service',
+    intro:
+      'These terms govern your use of solwara.com.au and any purchase you make from us. By using the site or placing an order, you agree to them.',
+    sections: [
+      {
+        h: 'Products & pricing',
+        p: [
+          'All prices are listed in Australian Dollars (AUD) and include applicable taxes unless stated otherwise. We aim to describe our products accurately, but slight natural variation in colour, texture, and appearance is part of a minimally processed, handcrafted product. We reserve the right to update prices and product details at any time.',
+        ],
+      },
+      {
+        h: 'Orders',
+        p: [
+          'Your order is an offer to purchase. We may accept or decline it, and we will refund you in full if we are unable to fulfil an accepted order. A contract is formed once we confirm your order by email.',
+        ],
+      },
+      {
+        h: 'Payment',
+        p: [
+          'Payments are processed securely by our third-party payment provider. By placing an order you confirm that you are authorised to use the payment method provided.',
+        ],
+      },
+      {
+        h: 'Wholesale',
+        p: [
+          'Wholesale pricing is provided on application and is subject to separate terms. Nothing on the public site constitutes a wholesale offer.',
+        ],
+      },
+      {
+        h: 'Consuming our cacao',
+        p: [
+          'Solwara is a ceremonial cacao food product, not a medicine, and is not intended to diagnose, treat, cure, or prevent any condition. Cacao naturally contains caffeine and theobromine. If you are pregnant, nursing, taking medication (including antidepressants), or have a health condition, please consult a health professional before use. Keep away from pets, as cacao is toxic to animals.',
+        ],
+      },
+      {
+        h: 'Intellectual property',
+        p: [
+          'All content on this site — including the Solwara name, logo, imagery, and text — is owned by Solwara Cacao and may not be reproduced without our written permission.',
+        ],
+      },
+      {
+        h: 'Limitation of liability',
+        p: [
+          'To the extent permitted by law, Solwara is not liable for any indirect or consequential loss arising from the use of our site or products. Nothing in these terms excludes rights that cannot be excluded under the Australian Consumer Law.',
+        ],
+      },
+      {
+        h: 'Governing law',
+        p: [
+          'These terms are governed by the laws of Australia. Questions? Email hello@solwara.com.au.',
+        ],
+      },
+    ],
+  },
+}
+
+function LegalView({ page }) {
+  const data = LEGAL_PAGES[page]
+  if (!data) return null
+  return (
+    <div className="pt-32 md:pt-40 pb-24 px-6 animate-fade-in">
+      <article className="max-w-3xl mx-auto">
+        <header className="text-center mb-14">
+          <Eyebrow className="mb-4">{data.eyebrow}</Eyebrow>
+          <h1 className="font-serif text-4xl md:text-5xl text-ocean mb-5">
+            {data.title}
+          </h1>
+          <div className="w-12 h-px bg-gold mx-auto mb-5" />
+          <p className="font-sans text-[11px] tracking-widest uppercase text-earth/50">
+            Last updated {LEGAL_UPDATED}
+          </p>
+        </header>
+
+        <p className="font-sans font-light text-earth leading-loose mb-12">
+          {data.intro}
+        </p>
+
+        <div className="space-y-10">
+          {data.sections.map((s) => (
+            <section key={s.h}>
+              <h2 className="font-serif text-2xl text-ocean uppercase tracking-wide mb-4">
+                {s.h}
+              </h2>
+              <div className="space-y-4">
+                {s.p.map((para, i) => (
+                  <p
+                    key={i}
+                    className="font-sans font-light text-earth leading-loose"
+                  >
+                    {para}
+                  </p>
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+
+        <p className="font-sans text-sm text-earth/70 mt-16 pt-8 border-t border-sand">
+          Questions about this page? Email us at{' '}
+          <a
+            href="mailto:hello@solwara.com.au"
+            className="link-underline text-ocean"
+          >
+            hello@solwara.com.au
+          </a>
+          .
+        </p>
+      </article>
+    </div>
+  )
+}
+
+const PrivacyView = () => <LegalView page="privacy" />
+const ShippingView = () => <LegalView page="shipping" />
+const TermsView = () => <LegalView page="terms" />
+
+/* =================================================================== */
 /*  Root                                                              */
 /* =================================================================== */
 const VIEWS = {
@@ -1524,6 +1755,9 @@ const VIEWS = {
   ritual: RitualView,
   wholesale: WholesaleView,
   contact: ContactView,
+  privacy: PrivacyView,
+  shipping: ShippingView,
+  terms: TermsView,
 }
 
 export default function App() {
