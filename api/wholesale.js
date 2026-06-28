@@ -6,6 +6,7 @@ import {
   NOTIFY_TO,
   esc,
 } from '../lib/email.js'
+import { addWholesale } from '../lib/db.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -21,6 +22,12 @@ export default async function handler(req, res) {
 
     if (!name || !business || !email || !message) {
       return res.status(400).json({ error: 'Please complete the required fields.' })
+    }
+
+    try {
+      await addWholesale({ name, business, email, phone, message })
+    } catch (e) {
+      console.warn('wholesale DB write failed:', e.message)
     }
 
     await sendEmail({

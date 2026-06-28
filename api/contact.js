@@ -6,6 +6,7 @@ import {
   NOTIFY_TO,
   esc,
 } from '../lib/email.js'
+import { addContact } from '../lib/db.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -22,6 +23,13 @@ export default async function handler(req, res) {
 
     if (!name || !email || !message) {
       return res.status(400).json({ error: 'Please complete all fields.' })
+    }
+
+    // Persist (best-effort — never block the email if the DB is unavailable).
+    try {
+      await addContact({ name, email, message })
+    } catch (e) {
+      console.warn('contact DB write failed:', e.message)
     }
 
     // Notify Solwara

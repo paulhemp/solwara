@@ -175,6 +175,49 @@ notification and the customer a receipt via Resend).
 > Like the email forms, PayPal only works on Vercel (or `vercel dev`) — not the
 > plain `npm run dev` server, which doesn't run the `api/` functions.
 
+### PayPal webhook (recommended)
+A webhook records payments server-side even if the buyer closes the tab before
+the confirmation page loads — and captures any order that was approved but not
+yet captured.
+
+1. In the PayPal dashboard → your **Live** app → **Webhooks** → **Add Webhook**.
+2. URL: `https://solwara.com.au/api/paypal/webhook`
+3. Subscribe to these events: **Checkout order approved**
+   (`CHECKOUT.ORDER.APPROVED`) and **Payment capture completed**
+   (`PAYMENT.CAPTURE.COMPLETED`).
+4. Save. No extra environment variable is needed — the webhook verifies each
+   event by re-fetching it from PayPal with your own credentials.
+
+---
+
+## Database & admin
+
+Subscribers, contact + wholesale enquiries, and paid orders are stored in
+**Postgres**, and viewable at **`/admin`**.
+
+### 1. Create the database (one click)
+In Vercel → your project → **Storage → Create Database → Postgres** (Neon), and
+connect it to the project. Vercel automatically injects the connection string
+(`DATABASE_URL` / `POSTGRES_URL`) — **you don't set it by hand.** Tables are
+created automatically on first use; no migrations to run.
+
+If you skip this, the site still works — orders/enquiries just arrive by email
+only (and `/admin` will say no database is connected).
+
+### 2. Set the admin password
+Add an environment variable in Vercel:
+
+| Name | Value |
+|------|-------|
+| `ADMIN_PASSWORD` | `ilovelife` |
+
+Then **redeploy**. Visit `https://solwara.com.au/admin`, enter the password, and
+you'll see tabs for **Orders, Contact, Wholesale and Subscribers**, each with
+dates and an **Export CSV** button.
+
+> The password is checked server-side and is never shipped to the browser.
+> To change it later, just update `ADMIN_PASSWORD` in Vercel and redeploy.
+
 ---
 
 ## Other next steps

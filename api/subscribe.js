@@ -1,4 +1,5 @@
 import { sendEmail, readJsonBody, layout, NOTIFY_TO, esc } from '../lib/email.js'
+import { addSubscriber } from '../lib/db.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -14,6 +15,12 @@ export default async function handler(req, res) {
 
     if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
       return res.status(400).json({ error: 'Please enter a valid email.' })
+    }
+
+    try {
+      await addSubscriber(email)
+    } catch (e) {
+      console.warn('subscriber DB write failed:', e.message)
     }
 
     await sendEmail({

@@ -1877,6 +1877,299 @@ const ShippingView = () => <LegalView page="shipping" />
 const TermsView = () => <LegalView page="terms" />
 
 /* =================================================================== */
+/*  ADMIN (solwara.com.au/admin)                                      */
+/* =================================================================== */
+
+function fmtDate(v) {
+  if (!v) return ''
+  const d = new Date(v)
+  return isNaN(d) ? String(v) : d.toLocaleString('en-AU')
+}
+
+function downloadCsv(filename, columns, rows) {
+  const escape = (val) => {
+    const s = val == null ? '' : String(val)
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+  }
+  const header = columns.map((c) => escape(c.label)).join(',')
+  const body = rows
+    .map((r) => columns.map((c) => escape(r[c.key])).join(','))
+    .join('\n')
+  const blob = new Blob([header + '\n' + body], {
+    type: 'text/csv;charset=utf-8;',
+  })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+const ADMIN_TABS = {
+  orders: {
+    label: 'Orders',
+    columns: [
+      { key: 'created_at', label: 'Date', date: true },
+      { key: 'customer_name', label: 'Customer' },
+      { key: 'customer_email', label: 'Email' },
+      { key: 'amount', label: 'Amount' },
+      { key: 'currency', label: 'Currency' },
+      { key: 'status', label: 'Status' },
+      { key: 'shipping_address', label: 'Ship to' },
+      { key: 'paypal_order_id', label: 'PayPal Order' },
+    ],
+  },
+  contacts: {
+    label: 'Contact',
+    columns: [
+      { key: 'created_at', label: 'Date', date: true },
+      { key: 'name', label: 'Name' },
+      { key: 'email', label: 'Email' },
+      { key: 'message', label: 'Message' },
+    ],
+  },
+  wholesale: {
+    label: 'Wholesale',
+    columns: [
+      { key: 'created_at', label: 'Date', date: true },
+      { key: 'name', label: 'Name' },
+      { key: 'business', label: 'Business' },
+      { key: 'email', label: 'Email' },
+      { key: 'phone', label: 'Phone' },
+      { key: 'message', label: 'Message' },
+    ],
+  },
+  subscribers: {
+    label: 'Subscribers',
+    columns: [
+      { key: 'created_at', label: 'Date', date: true },
+      { key: 'email', label: 'Email' },
+    ],
+  },
+}
+
+function AdminView() {
+  const { navigate } = useStore()
+  const [password, setPassword] = useState('')
+  const [auth, setAuth] = useState(false)
+  const [status, setStatus] = useState('idle') // idle | loading | error
+  const [error, setError] = useState('')
+  const [payload, setPayload] = useState(null)
+  const [tab, setTab] = useState('orders')
+
+  const load = async (pw) => {
+    setStatus('loading')
+    setError('')
+    try {
+      const res = await fetch('/api/admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pw }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Login failed')
+      setPayload(data)
+      setAuth(true)
+      setStatus('idle')
+    } catch (e) {
+      setError(e.message)
+      setStatus('error')
+    }
+  }
+
+  if (!auth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-ocean px-6">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            load(password)
+          }}
+          className="w-full max-w-sm text-center"
+        >
+          <img
+            src="/images/mark.png"
+            alt=""
+            className="h-12 w-12 object-contain brightness-0 invert opacity-90 mx-auto mb-6"
+          />
+          <h1 className="font-serif text-3xl text-ivory uppercase tracking-wide mb-2">
+            Solwara Admin
+          </h1>
+          <p className="font-sans text-[11px] tracking-widest uppercase text-gold mb-8">
+            Authorised access only
+          </p>
+          <input
+            type="password"
+            autoFocus
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Password"
+            className="w-full bg-ivory/95 text-ocean px-5 py-3 text-sm font-sans focus:outline-none focus:ring-2 focus:ring-gold mb-4"
+          />
+          {error && (
+            <p className="font-sans text-sm text-coconut mb-4">{error}</p>
+          )}
+          <button
+            type="submit"
+            disabled={status === 'loading'}
+            className="w-full font-sans text-[12px] tracking-widest uppercase bg-gold text-ivory py-3 hover:bg-ivory hover:text-ocean transition-colors disabled:opacity-70"
+          >
+            {status === 'loading' ? 'Checking…' : 'Enter'}
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('home')}
+            className="block mx-auto mt-6 font-sans text-[11px] tracking-widest uppercase text-ivory/60 hover:text-ivory"
+          >
+            ← Back to site
+          </button>
+        </form>
+      </div>
+    )
+  }
+
+  const data = payload?.data || {}
+  const active = ADMIN_TABS[tab]
+  const rows = data[tab] || []
+
+  return (
+    <div className="min-h-screen bg-ivory">
+      <header className="bg-ocean text-ivory">
+        <div className="max-w-8xl mx-auto px-6 lg:px-10 py-5 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <img
+              src="/images/mark.png"
+              alt=""
+              className="h-7 w-7 object-contain brightness-0 invert opacity-90"
+            />
+            <span className="font-serif text-xl tracking-brand uppercase">
+              Admin
+            </span>
+          </div>
+          <div className="flex items-center gap-5 font-sans text-[11px] tracking-widest uppercase">
+            <button
+              onClick={() => load(password)}
+              className="text-ivory/70 hover:text-ivory"
+            >
+              Refresh
+            </button>
+            <button
+              onClick={() => {
+                setAuth(false)
+                setPassword('')
+                setPayload(null)
+              }}
+              className="text-ivory/70 hover:text-ivory"
+            >
+              Log out
+            </button>
+            <button
+              onClick={() => navigate('home')}
+              className="text-gold hover:text-ivory"
+            >
+              View site
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <div className="max-w-8xl mx-auto px-6 lg:px-10 py-10">
+        {payload && payload.dbConfigured === false && (
+          <div className="bg-sand border border-gold/40 p-4 mb-8 font-sans text-sm text-earth">
+            No database is connected yet, so there's nothing stored. Create a
+            Postgres database in Vercel → Storage and redeploy.
+          </div>
+        )}
+
+        {/* Tabs */}
+        <div className="flex flex-wrap gap-2 mb-8 border-b border-sand">
+          {Object.entries(ADMIN_TABS).map(([key, t]) => (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              className={`font-sans text-[12px] tracking-widest uppercase px-5 py-3 -mb-px border-b-2 transition-colors ${
+                tab === key
+                  ? 'border-gold text-ocean'
+                  : 'border-transparent text-earth/60 hover:text-ocean'
+              }`}
+            >
+              {t.label}
+              <span className="ml-2 text-earth/40">
+                {(data[key] || []).length}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Toolbar */}
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-serif text-2xl text-ocean uppercase tracking-wide">
+            {active.label}
+          </h2>
+          <button
+            onClick={() =>
+              downloadCsv(
+                `solwara-${tab}-${new Date().toISOString().slice(0, 10)}.csv`,
+                active.columns,
+                rows
+              )
+            }
+            disabled={!rows.length}
+            className="font-sans text-[11px] tracking-widest uppercase border border-ocean text-ocean px-5 py-2.5 hover:bg-ocean hover:text-ivory transition-colors disabled:opacity-40"
+          >
+            Export CSV
+          </button>
+        </div>
+
+        {/* Table */}
+        {rows.length === 0 ? (
+          <p className="font-sans text-sm text-earth/60 py-12 text-center">
+            Nothing here yet.
+          </p>
+        ) : (
+          <div className="overflow-x-auto border border-sand bg-white">
+            <table className="w-full text-left font-sans text-sm">
+              <thead>
+                <tr className="bg-sand/50 text-ocean">
+                  {active.columns.map((c) => (
+                    <th
+                      key={c.key}
+                      className="px-4 py-3 font-medium text-[11px] tracking-widest uppercase whitespace-nowrap"
+                    >
+                      {c.label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r, i) => (
+                  <tr
+                    key={r.id ?? i}
+                    className="border-t border-sand align-top text-earth"
+                  >
+                    {active.columns.map((c) => (
+                      <td
+                        key={c.key}
+                        className="px-4 py-3 max-w-[280px] whitespace-pre-wrap break-words"
+                      >
+                        {c.date ? fmtDate(r[c.key]) : r[c.key]}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* =================================================================== */
 /*  Root                                                              */
 /* =================================================================== */
 const VIEWS = {
@@ -1891,10 +2184,20 @@ const VIEWS = {
   privacy: PrivacyView,
   shipping: ShippingView,
   terms: TermsView,
+  admin: AdminView,
+}
+
+// Standalone pages render without the storefront header/footer.
+const STANDALONE_VIEWS = new Set(['admin'])
+
+function initialView() {
+  if (typeof window === 'undefined') return 'home'
+  const path = window.location.pathname.replace(/\/+$/, '')
+  return path === '/admin' ? 'admin' : 'home'
 }
 
 export default function App() {
-  const [currentView, setCurrentView] = useState('home')
+  const [currentView, setCurrentView] = useState(initialView)
   const [activeProduct, setActiveProduct] = useState(null)
   const [cart, setCart] = useState([])
   const [toast, setToast] = useState('')
@@ -1922,6 +2225,12 @@ export default function App() {
   const navigate = useCallback((view, product = null) => {
     setActiveProduct(product)
     if (view === 'cart') setCheckoutState('cart')
+    if (typeof window !== 'undefined') {
+      const path = view === 'admin' ? '/admin' : '/'
+      if (window.location.pathname !== path) {
+        window.history.pushState({}, '', path)
+      }
+    }
     setCurrentView(view)
   }, [])
 
@@ -1978,6 +2287,14 @@ export default function App() {
   }
 
   const ActiveView = VIEWS[currentView] || HomeView
+
+  if (STANDALONE_VIEWS.has(currentView)) {
+    return (
+      <StoreContext.Provider value={store}>
+        <ActiveView />
+      </StoreContext.Provider>
+    )
+  }
 
   return (
     <StoreContext.Provider value={store}>
