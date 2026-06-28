@@ -806,17 +806,153 @@ function ProductView() {
 }
 
 /* =================================================================== */
+/*  PAYPAL CHECKOUT                                                   */
+/* =================================================================== */
+
+// Load the PayPal JS SDK once, on demand.
+let paypalSdkPromise = null
+function loadPayPalSdk(clientId, currency = 'AUD') {
+  if (typeof window !== 'undefined' && window.paypal) return Promise.resolve()
+  if (paypalSdkPromise) return paypalSdkPromise
+  paypalSdkPromise = new Promise((resolve, reject) => {
+    const s = document.createElement('script')
+    s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(
+      clientId
+    )}&currency=${encodeURIComponent(currency)}&intent=capture`
+    s.onload = resolve
+    s.onerror = () => {
+      paypalSdkPromise = null
+      reject(new Error('Failed to load PayPal'))
+    }
+    document.body.appendChild(s)
+  })
+  return paypalSdkPromise
+}
+
+function PayPalCheckout({ onSuccess }) {
+  const { cart } = useStore()
+  const cartRef = useRef(cart)
+  cartRef.current = cart
+  const containerRef = useRef(null)
+  // loading | ready | unconfigured | error
+  const [status, setStatus] = useState('loading')
+
+  useEffect(() => {
+    let cancelled = false
+    let buttons
+
+    ;(async () => {
+      try {
+        const cfg = await fetch('/api/paypal/config')
+          .then((r) => (r.ok ? r.json() : null))
+          .catch(() => null)
+
+        if (!cfg || !cfg.clientId) {
+          if (!cancelled) setStatus('unconfigured')
+          return
+        }
+
+        await loadPayPalSdk(cfg.clientId, cfg.currency)
+        if (cancelled || !window.paypal || !containerRef.current) return
+        containerRef.current.innerHTML = ''
+
+        buttons = window.paypal.Buttons({
+          style: { color: 'gold', shape: 'rect', label: 'paypal', height: 48 },
+          createOrder: async () => {
+            const items = cartRef.current.map((i) => ({
+              id: i.id,
+              quantity: i.quantity,
+            }))
+            const r = await fetch('/api/paypal/create-order', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ items }),
+            })
+            const d = await r.json()
+            if (!r.ok) throw new Error(d.error || 'Unable to start checkout')
+            return d.id
+          },
+          onApprove: async (data) => {
+            const r = await fetch('/api/paypal/capture-order', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ orderID: data.orderID }),
+            })
+            const d = await r.json()
+            if (!r.ok || d.status !== 'COMPLETED') {
+              throw new Error(d.error || 'Payment could not be completed')
+            }
+            onSuccess(d)
+          },
+          onError: (err) => {
+            console.error('PayPal error:', err)
+            if (!cancelled) setStatus('error')
+          },
+        })
+
+        if (buttons.isEligible && !buttons.isEligible()) {
+          if (!cancelled) setStatus('error')
+          return
+        }
+        await buttons.render(containerRef.current)
+        if (!cancelled) setStatus('ready')
+      } catch (e) {
+        console.error(e)
+        if (!cancelled) setStatus('error')
+      }
+    })()
+
+    return () => {
+      cancelled = true
+      try {
+        buttons && buttons.close && buttons.close()
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [onSuccess])
+
+  return (
+    <div>
+      <div ref={containerRef} className={status === 'ready' ? '' : 'hidden'} />
+
+      {status === 'loading' && (
+        <div className="bg-ocean/90 text-ivory w-full py-4 text-center font-sans text-[12px] tracking-widest uppercase">
+          Loading secure checkout…
+        </div>
+      )}
+
+      {(status === 'error' || status === 'unconfigured') && (
+        <div className="border border-sand p-5 text-center">
+          <p className="font-sans text-sm text-earth leading-relaxed">
+            {status === 'unconfigured'
+              ? 'Online payment is being set up.'
+              : 'We couldn’t load the payment options just now.'}{' '}
+            Please email{' '}
+            <a
+              href="mailto:hello@solwara.com.au"
+              className="link-underline text-ocean"
+            >
+              hello@solwara.com.au
+            </a>{' '}
+            to complete your order.
+          </p>
+        </div>
+      )}
+
+      <p className="mt-4 text-center font-sans text-[10px] uppercase tracking-widest text-earth/50">
+        Secure payment · PayPal &amp; Card
+      </p>
+    </div>
+  )
+}
+
+/* =================================================================== */
 /*  CART                                                              */
 /* =================================================================== */
 function CartView() {
-  const {
-    cart,
-    updateQuantity,
-    cartTotal,
-    navigate,
-    checkoutState,
-    handleCheckout,
-  } = useStore()
+  const { cart, updateQuantity, cartTotal, navigate, checkoutState, completeOrder } =
+    useStore()
 
   if (checkoutState === 'success') {
     return (
@@ -929,18 +1065,7 @@ function CartView() {
                   <span>Total</span>
                   <span>${cartTotal + FLAT_SHIPPING} AUD</span>
                 </div>
-                <button
-                  onClick={handleCheckout}
-                  disabled={checkoutState === 'loading'}
-                  className="font-sans text-[12px] tracking-widest uppercase bg-ocean text-ivory w-full py-4 hover:bg-gold transition-colors disabled:opacity-70"
-                >
-                  {checkoutState === 'loading'
-                    ? 'Processing…'
-                    : 'Proceed to Checkout'}
-                </button>
-                <p className="mt-4 text-center font-sans text-[10px] uppercase tracking-widest text-earth/50">
-                  Secure payment · Stripe
-                </p>
+                <PayPalCheckout onSuccess={completeOrder} />
               </div>
             </div>
           </div>
@@ -1512,8 +1637,10 @@ function Footer() {
           aria-hidden="true"
           className="mx-auto h-10 md:h-12 object-contain brightness-0 invert opacity-15 my-8"
         />
-        <div className="max-w-8xl mx-auto px-6 lg:px-10 pb-7 flex flex-col sm:flex-row justify-between items-center gap-3 font-sans text-[10px] tracking-widest uppercase text-sand/50">
-          <span>© {new Date().getFullYear()} Solwara Cacao</span>
+        <div className="max-w-8xl mx-auto px-6 lg:px-10 pb-7 flex flex-col sm:flex-row justify-between items-center gap-3 font-sans text-[10px] tracking-widest uppercase text-sand/50 text-center">
+          <span>
+            © {new Date().getFullYear()} Raw With Life Pty Ltd · ABN 58 027 150 669
+          </span>
           <span>Pure · Ethical · Pacific</span>
         </div>
       </div>
@@ -1532,7 +1659,7 @@ const LEGAL_PAGES = {
     eyebrow: 'Legal',
     title: 'Privacy Policy',
     intro:
-      'Solwara Cacao ("Solwara", "we", "us") respects your privacy. This policy explains what personal information we collect when you visit solwara.com.au or place an order, how we use it, and the choices you have.',
+      'Solwara is a trading name of Raw With Life Pty Ltd (ABN 58 027 150 669) ("Solwara", "we", "us"), the entity responsible for your personal information. This policy explains what we collect when you visit solwara.com.au or place an order, how we use it, and the choices you have.',
     sections: [
       {
         h: 'Information we collect',
@@ -1631,6 +1758,12 @@ const LEGAL_PAGES = {
     intro:
       'These terms govern your use of solwara.com.au and any purchase you make from us. By using the site or placing an order, you agree to them.',
     sections: [
+      {
+        h: 'Who we are',
+        p: [
+          'Solwara is a trading name of Raw With Life Pty Ltd (ABN 58 027 150 669), an Australian company. References to "Solwara", "we", "us", or "our" in these terms mean Raw With Life Pty Ltd.',
+        ],
+      },
       {
         h: 'Products & pricing',
         p: [
@@ -1818,12 +1951,10 @@ export default function App() {
     )
   }, [])
 
-  const handleCheckout = useCallback(() => {
-    setCheckoutState('loading')
-    setTimeout(() => {
-      setCheckoutState('success')
-      setCart([])
-    }, 1800)
+  // Called after PayPal confirms and our server captures the payment.
+  const completeOrder = useCallback(() => {
+    setCheckoutState('success')
+    setCart([])
   }, [])
 
   const cartTotal = cart.reduce((sum, i) => sum + i.price * i.quantity, 0)
@@ -1843,7 +1974,7 @@ export default function App() {
     addToCart,
     updateQuantity,
     showToast,
-    handleCheckout,
+    completeOrder,
   }
 
   const ActiveView = VIEWS[currentView] || HomeView

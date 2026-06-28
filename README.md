@@ -4,8 +4,9 @@ A world-class marketing & storefront site for Solwara ceremonial cacao.
 Built with **Vite + React + Tailwind CSS**. Fast, mobile-first, and ready to
 deploy to Vercel.
 
-> Note: the cart and checkout are a polished front-end demo (no real payment
-> processing yet). See **Going live with payments** below to connect Stripe.
+> Cart & checkout use real **PayPal** payments and the forms send real email
+> via **Resend** — both run as serverless functions on Vercel. You just add the
+> API keys as environment variables (see **Payments** and **Email** below).
 
 ---
 
@@ -137,24 +138,56 @@ To send from `hello@solwara.com.au` and email customers their confirmations:
 
 ---
 
-## Going live with payments (next step)
+## Payments — PayPal
 
-The checkout currently simulates an order. To accept real payments, the
-recommended path on Vercel is a **Stripe Checkout** serverless function:
+Checkout uses **PayPal** (PayPal balance + card, no PayPal account required for
+the buyer). Three serverless functions in `api/paypal/` handle it securely:
+`config.js` (gives the browser the public Client ID), `create-order.js`
+(creates the order with the **server-recomputed** total so amounts can't be
+tampered with), and `capture-order.js` (captures payment, then emails you a
+notification and the customer a receipt via Resend).
 
-1. Add a Vercel Serverless Function (e.g. `api/checkout.js`) that creates a
-   Stripe Checkout Session with the cart line items plus the flat
-   `$20 AUD` shipping line.
-2. Store `STRIPE_SECRET_KEY` (and a webhook secret) in
-   **Vercel → Settings → Environment Variables** — never commit keys.
-3. Point the "Proceed to Checkout" button at that function and redirect the
-   customer to the returned Stripe URL.
-4. Add a Stripe webhook to confirm payment and record the order.
+### Set it up
+1. In the [PayPal Developer dashboard](https://developer.paypal.com/dashboard/applications)
+   open your app and copy its **Secret**.
+2. In Vercel → your project → **Settings → Environment Variables**, add:
 
-The same pattern covers the contact / wholesale form storage and newsletter
-capture (e.g. with Resend for email). See the original build brief for the full
-launch checklist.
+   | Name | Value | Notes |
+   |------|-------|-------|
+   | `PAYPAL_CLIENT_SECRET` | your secret | **required, keep secret** |
+   | `PAYPAL_ENV` | `live` or `sandbox` | must match the credentials |
+   | `PAYPAL_CLIENT_ID` | `AT…` | optional — a default is baked in; set only if you rotate it |
+
+3. **Redeploy** so the functions pick up the variables.
+
+> The Client ID is public and safe in the repo; only the **secret** is
+> sensitive. Make sure `PAYPAL_ENV` matches the type of credentials (a sandbox
+> Client ID + secret with `PAYPAL_ENV=sandbox`, live with `live`).
+
+### Test it
+- **Sandbox first:** set `PAYPAL_ENV=sandbox` with sandbox credentials and pay
+  using a [sandbox test account](https://developer.paypal.com/dashboard/accounts).
+- Confirm the order email lands in your inbox, then switch to `live`.
+- Prices live in **two** places that must agree: `src/App.jsx` (`products`, for
+  display) and `lib/products.js` (server, for charging). Update both if a price
+  changes.
+
+> Like the email forms, PayPal only works on Vercel (or `vercel dev`) — not the
+> plain `npm run dev` server, which doesn't run the `api/` functions.
 
 ---
 
-© Solwara Cacao. Pure · Ethical · Pacific.
+## Other next steps
+
+- **Order storage / admin:** orders currently arrive by email only. A database
+  (e.g. Vercel Postgres) + a simple `/admin` view would let you list orders,
+  enquiries and subscribers, with CSV export.
+- **PayPal webhook:** for extra reliability you can add a PayPal webhook to
+  independently confirm captured payments server-side.
+- **Legal review:** the Privacy, Shipping & Terms pages are practical templates
+  populated with your entity (Raw With Life Pty Ltd, ABN 58 027 150 669) — have
+  them reviewed against your actual business setup before relying on them.
+
+---
+
+© Raw With Life Pty Ltd, trading as Solwara · ABN 58 027 150 669. Pure · Ethical · Pacific.
